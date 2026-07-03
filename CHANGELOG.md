@@ -4,6 +4,26 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-07-02
+
+### Added
+- Broad endpoint expansion (~30 new commands) covering the full public Explorer surface,
+  verified live against the API:
+  - **Accounts:** `account-value`, `account-stats`, `account-claimable-balances`,
+    `account-balance-history`, `account-search`.
+  - **Assets:** `top50`, `asset-meta`, `asset-supply`, `asset-rating`,
+    `asset-distribution`, `asset-trading-pairs`, `asset-position`.
+  - **Contracts:** `contract-balance`, `contract-balance-history`, `contract-users`,
+    `contract-value`, `contract-versions`, `contract-data`.
+  - **Ledgers:** `ledgers`, `ledger-stats-history`, `sequence-from-timestamp`,
+    `timestamp-from-sequence`, `ledger-transactions`.
+  - **Pools / markets / offers:** `pool`, `pool-holders`, `pool-trades`, `pool-history`,
+    `market`, `markets --asset`, `active-market`, `offer`, `offer-trades`.
+  - **Directory / domains:** `directory-tags`, `blocked-domains`, `domain-meta`.
+- Support for global (network-less) `/explorer/directory/...` endpoints and the
+  `asset[]=` array parameter form used by `asset/meta`.
+- Tests grew to 129 (83 offline + 46 live).
+
 ## [1.1.0] - 2026-07-02
 
 ### Added

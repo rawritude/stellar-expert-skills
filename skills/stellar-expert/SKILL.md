@@ -59,6 +59,29 @@ stellar.expert API subscription. If a 402 comes back, tell the user this data ne
 subscription key rather than retrying. All other commands are public and need no key.
 Candle `--resolution` is in seconds (`86400` daily, `3600` hourly); `--from`/`--to` are unix seconds.
 
+### More commands (all public)
+
+Deeper coverage — same invocation pattern. See [`reference/api.md`](reference/api.md) for exact
+shapes. Group by what the user is asking about:
+
+- **Account:** `account-value <G>`, `account-stats <G>`, `account-claimable-balances <G>`,
+  `account-balance-history <G> <asset>`, `account-search <term>`.
+- **Asset:** `top50`, `asset-meta <A...>`, `asset-supply <A>`, `asset-rating <A>`,
+  `asset-distribution <A>`, `asset-trading-pairs <A>`, `asset-position <A> <G>`.
+- **Contract:** `contract-balance <C>`, `contract-balance-history <C> <asset>`,
+  `contract-users <C>`, `contract-value <C>`, `contract-versions <C>`,
+  `contract-data <C> [--key K]`.
+- **Ledger:** `ledgers [--limit]`, `ledger-transactions <seq>`, `ledger-stats-history`,
+  `sequence-from-timestamp <ts>`, `timestamp-from-sequence <seq>`.
+- **Pool / market / offer:** `pool <id>`, `pool-holders <id>`, `pool-trades <id>`,
+  `pool-history <id>`, `market <selling> <buying>`, `markets --asset <A>`,
+  `active-market <A-with--1/-2-suffix>`, `offer <id>`, `offer-trades <id>`.
+- **Directory / domain:** `directory-tags`, `blocked-domains [<domain>]`, `domain-meta <domain>`.
+
+Watch-outs: `asset-supply` returns a bare number; `account-balance-history` / `asset-position`
+need an asset the account actually holds (else 404); `active-market` needs the asset type
+suffix (`USDC-<issuer>-1`); `ledger-stats-history` can be large, so pass `--limit`.
+
 ## How to use it well
 
 1. **Pick the narrowest command** for the question rather than dumping everything. For "who

@@ -46,6 +46,29 @@ def test_build_url_list_uses_repeated_plain_param():
     assert "asset%5B%5D" not in url and "asset[]" not in url
 
 
+def test_asset_meta_uses_bracket_array_form():
+    c = se.StellarExpertClient(network="public")
+    url = c.build_url("asset/meta", {"asset[]": ["USDC-GABC", "XLM"]})
+    # brackets must stay literal (not %5B%5D) and repeat per asset
+    assert url.count("asset[]=") == 2
+    assert "%5B%5D" not in url
+
+
+def test_build_root_url_has_no_network_segment():
+    c = se.StellarExpertClient(network="public")
+    url = c.build_root_url("directory/tags")
+    assert url.endswith("/explorer/directory/tags")
+    assert "/public/" not in url
+
+
+def test_get_root_fetches_global_path(monkeypatch):
+    captured = {}
+    c = se.StellarExpertClient(network="public")
+    monkeypatch.setattr(c, "_fetch", lambda url: captured.setdefault("url", url))
+    c.directory_tags()
+    assert captured["url"].endswith("/explorer/directory/tags")
+
+
 def test_candles_maps_frm_to_from_param(monkeypatch):
     captured = {}
     c = se.StellarExpertClient(network="public")
@@ -234,6 +257,40 @@ class _SpyClient:
     (["transaction", "deadbeef"], "transaction"),
     (["asset-candles", "USDC-GABC"], "asset_candles"),
     (["market-candles", "XLM", "USDC-GABC"], "market_candles"),
+    (["account-search", "centre"], "account_search"),
+    (["account-value", "GABC"], "account_value"),
+    (["account-stats", "GABC"], "account_stats_history"),
+    (["account-claimable-balances", "GABC"], "account_claimable_balances"),
+    (["account-balance-history", "GABC", "XLM"], "account_balance_history"),
+    (["top50"], "top50"),
+    (["asset-meta", "USDC-GABC"], "asset_meta"),
+    (["asset-supply", "USDC-GABC"], "asset_supply"),
+    (["asset-rating", "USDC-GABC"], "asset_rating"),
+    (["asset-distribution", "USDC-GABC"], "asset_distribution"),
+    (["asset-trading-pairs", "USDC-GABC"], "asset_trading_pairs"),
+    (["asset-position", "USDC-GABC", "GHOLDER"], "asset_position"),
+    (["contract-balance", "CABC"], "contract_balance"),
+    (["contract-balance-history", "CABC", "XLM"], "contract_balance_history"),
+    (["contract-users", "CABC"], "contract_users"),
+    (["contract-value", "CABC"], "contract_value"),
+    (["contract-versions", "CABC"], "contract_versions"),
+    (["contract-data", "CABC"], "contract_data"),
+    (["ledgers"], "ledgers"),
+    (["ledger-stats-history"], "ledger_stats_history"),
+    (["sequence-from-timestamp", "1780000000"], "sequence_from_timestamp"),
+    (["timestamp-from-sequence", "56309876"], "timestamp_from_sequence"),
+    (["ledger-transactions", "63305748"], "ledger_transactions"),
+    (["pool", "abc"], "pool"),
+    (["pool-holders", "abc"], "pool_holders"),
+    (["pool-trades", "abc"], "pool_trades"),
+    (["pool-history", "abc"], "pool_history"),
+    (["market", "XLM", "USDC-GABC"], "market"),
+    (["active-market", "USDC-GABC-1"], "active_market"),
+    (["offer", "12345"], "offer"),
+    (["offer-trades", "12345"], "offer_trades"),
+    (["directory-tags"], "directory_tags"),
+    (["blocked-domains"], "blocked_domains"),
+    (["domain-meta", "centre.io"], "domain_meta"),
 ])
 def test_dispatch_routing(argv, expected_method):
     args = se.build_parser().parse_args(argv)

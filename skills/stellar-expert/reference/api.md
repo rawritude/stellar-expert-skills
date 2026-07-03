@@ -63,6 +63,48 @@ The client raises a clear error (status 402) on these when no key is set.
 `candles` params: `resolution` = candle width in seconds (e.g. `86400` daily, `3600` hourly);
 `from` / `to` = unix seconds window. No params returns `[]`; an unsupported `resolution` → HTTP 400.
 
+## Extended commands → endpoints (all public unless noted)
+
+| CLI command | Method + path | Envelope / notes |
+| --- | --- | --- |
+| `account-search <term>` | `GET /account?search=` | HAL. Search by name/tag/domain/partial address. |
+| `account-value <G...>` | `GET /account/{a}/value` | Flat `{address, balances[], total, currency}`. |
+| `account-stats <G...>` | `GET /account/{a}/stats-history` | **Bare array** time series. |
+| `account-claimable-balances <G...>` | `GET /account/{a}/claimable-balances` | HAL list. |
+| `account-balance-history <G...> <asset>` | `GET /account/{a}/balance/{asset}/history` | **Bare array** of `[ts, balance, value]`. Asset must be one the account holds (else 404); use `XLM` or the exact held string. |
+| `top50` | `GET /asset-list/top50` | Flat `{name, provider, assets[]}`. |
+| `asset-meta <A> [<B>...]` | `GET /asset/meta?asset[]=A&asset[]=B` | HAL. **Uses `asset[]=` array form** (differs from `prices`, which uses plain `asset=`). |
+| `asset-supply <asset>` | `GET /asset/{a}/supply` | **Bare number** (raw scalar body). |
+| `asset-rating <asset>` | `GET /asset/{a}/rating` | Flat `{asset, rating{age,activity,trustlines,liquidity,volume7d,interop,average}}`. |
+| `asset-distribution <asset>` | `GET /asset/{a}/distribution` | **Bare array** of `{range, holders}`. |
+| `asset-trading-pairs <asset>` | `GET /asset/{a}/trading-pairs` | **Bare array** of asset-name strings. |
+| `asset-position <asset> <G...>` | `GET /asset/{a}/position/{account}` | Flat `{account, asset, balance, position, total}`. 404 if the account doesn't hold it. |
+| `contract-balance <C...>` | `GET /contract/{c}/balance` | **Bare array** (empty if none). |
+| `contract-balance-history <C...> <asset>` | `GET /contract/{c}/balance/{asset}/history` | Bare array; 404 if the contract doesn't hold the asset. |
+| `contract-users <C...>` | `GET /contract/{c}/users` | **Bare array** of `{address, invocations}`. |
+| `contract-value <C...>` | `GET /contract/{c}/value` | Flat `{address, balances[], total, currency}`. |
+| `contract-versions <C...>` | `GET /contract/{c}/version?limit&order` | HAL list of WASM versions. |
+| `contract-data <C...> [--key K --durability D]` | `GET /contract-data/{addr}` or `/{addr}/{durability}/{key}` | HAL list; with `--key` (base64 XDR ScVal from the list) fetches one entry. `durability` is loosely validated (`temporary` may 500). |
+| `ledgers [--limit]` | `GET /ledger/lastn?limit` | **Bare array** of ledgers. |
+| `ledger-stats-history [--limit --order]` | `GET /ledger/ledger-stats` | **Bare array** full time series (large — pass `--limit`/`--order desc`). Distinct from `network-stats` (`/24h` aggregate). |
+| `sequence-from-timestamp <ts>` | `GET /ledger/sequence-from-timestamp?timestamp` | Flat `{sequence, timestamp, date}`. |
+| `timestamp-from-sequence <seq>` | `GET /ledger/timestamp-from-sequence?sequence` | Flat `{sequence, timestamp, date}`. |
+| `ledger-transactions <seq>` | `GET /ledger/{seq}/tx` | **Bare array** of txs. Public (not key-gated, unlike `/tx`). |
+| `pool <L-id>` | `GET /liquidity-pool/{id}` | Flat `{id, assets[], fee, shares, total_value_locked}`. |
+| `pool-holders <id>` | `GET /liquidity-pool/{id}/holders` | HAL list. |
+| `pool-trades <id>` | `GET /liquidity-pool/{id}/history/trades` | HAL list. |
+| `pool-history <id>` | `GET /liquidity-pool/{id}/stats-history` | HAL list. |
+| `markets --asset <A>` | `GET /market?asset=` | Adds an asset filter to the market list. |
+| `market <selling> <buying>` | `GET /market/{selling}/{buying}` | Flat single-market stats. |
+| `active-market <asset>` | `GET /active-market/{asset}` | **Bare array** of counter-asset names. Asset **must include the `-1`/`-2` suffix** (else 400). |
+| `offer <id>` | `GET /offer/{id}` | Flat `{id, account, selling, buying, amount, price}`. |
+| `offer-trades <id>` | `GET /offer/{id}/history/trades` | HAL list. |
+| `directory-tags` | `GET /explorer/directory/tags` | **Global** (no network segment). Bare array of `{name, description}`. |
+| `blocked-domains [<domain>]` | `GET /explorer/directory/blocked-domains[/{domain}]` | **Global.** List (HAL) or single `{domain, blocked}`. |
+| `domain-meta <domain>` | `GET /domain-meta?domain=` | Flat `{domain, meta{...}}` from the domain's stellar.toml. |
+
+Pool ids: the 64-char hex form works in paths; the object's own `id` field is the strkey (`L...`) form.
+
 ## Asset identifiers
 
 `CODE-ISSUER` and `CODE-ISSUER-{1|2}` are both accepted; the API canonicalizes to the
@@ -71,8 +113,9 @@ returned canonical `asset` string.
 
 ## Things the API does NOT provide
 
-- **No search endpoint.** stellar.expert's search is front-end only. Query specific
-  resources directly (`account/{id}`, `asset/{id}`, `ledger/{seq}`).
+- **No universal search endpoint.** There is an account search (`account-search`, via
+  `account?search=`), but no cross-resource search — query specific resources directly
+  (`asset/{id}`, `ledger/{seq}`, `tx/{hash}`).
 - **Trade history is available** (`asset-trades`, `account-trades`, and market/pool/offer
   `/history/trades`), but **payment/operation history is not** — stellar.expert does not proxy
   Horizon payment/operation streams. For those, use Horizon directly

@@ -113,6 +113,137 @@ def test_account_trades_public(client):
     assert "_embedded" in data
 
 
+# ---- Extended endpoints (v1.2.0) ---------------------------------------------
+
+@pytest.fixture(scope="module")
+def contract_id(client):
+    return client.contracts(limit=1)["_embedded"]["records"][0]["contract"]
+
+
+@pytest.fixture(scope="module")
+def holder(client):
+    return client.asset_holders(USDC, limit=1)["_embedded"]["records"][0]["account"]
+
+
+@pytest.fixture(scope="module")
+def last_seq(client):
+    return client.last_ledger()["sequence"]
+
+
+def test_account_value(client):
+    assert "address" in client.account_value(CENTRE_ACCT)
+
+
+def test_account_stats_history_array(client):
+    assert isinstance(client.account_stats_history(CENTRE_ACCT), list)
+
+
+def test_account_claimable_balances(client):
+    assert "_embedded" in client.account_claimable_balances(CENTRE_ACCT)
+
+
+def test_account_balance_history_xlm(client):
+    data = client.account_balance_history(CENTRE_ACCT, "XLM")
+    assert isinstance(data, list)
+
+
+def test_account_search(client):
+    assert "_embedded" in client.account_search("centre")
+
+
+def test_top50(client):
+    data = client.top50()
+    assert "assets" in data and data["assets"]
+
+
+def test_asset_meta_bracket_form(client):
+    data = client.asset_meta([USDC])
+    assert "_embedded" in data
+
+
+def test_asset_supply_is_number(client):
+    assert isinstance(client.asset_supply(USDC), (int, float))
+
+
+def test_asset_rating(client):
+    assert "rating" in client.asset_rating(USDC)
+
+
+def test_asset_distribution_array(client):
+    data = client.asset_distribution(USDC)
+    assert isinstance(data, list) and "range" in data[0]
+
+
+def test_asset_trading_pairs_array(client):
+    assert isinstance(client.asset_trading_pairs(USDC), list)
+
+
+def test_asset_position(client, holder):
+    data = client.asset_position(USDC, holder)
+    assert data["account"] == holder and "position" in data
+
+
+def test_contract_users(client, contract_id):
+    assert isinstance(client.contract_users(contract_id), list)
+
+
+def test_contract_value(client, contract_id):
+    assert "address" in client.contract_value(contract_id)
+
+
+def test_contract_data(client, contract_id):
+    assert "_embedded" in client.contract_data(contract_id)
+
+
+def test_ledgers_array(client):
+    data = client.ledgers(limit=2)
+    assert isinstance(data, list) and len(data) <= 2 and "sequence" in data[0]
+
+
+def test_sequence_from_timestamp(client):
+    data = client.sequence_from_timestamp(1780000000)
+    assert "sequence" in data
+
+
+def test_timestamp_from_sequence(client, last_seq):
+    data = client.timestamp_from_sequence(last_seq)
+    assert data["sequence"] == last_seq
+
+
+def test_ledger_transactions_array(client, last_seq):
+    assert isinstance(client.ledger_transactions(last_seq), list)
+
+
+def test_pool_and_children(client):
+    pool_id = "ce05eb743321ec8571cda411b6932cd421eabbb7f4d622ec884f5dfa6656a500"
+    assert "assets" in client.pool(pool_id)
+    assert "_embedded" in client.pool_holders(pool_id, limit=2)
+    assert "_embedded" in client.pool_trades(pool_id, limit=2)
+
+
+def test_single_market(client):
+    data = client.market("XLM", USDC)
+    assert "asset" in data
+
+
+def test_active_market_needs_suffix(client):
+    data = client.active_market(USDC + "-1")
+    assert isinstance(data, list)
+
+
+def test_directory_tags_array(client):
+    data = client.directory_tags()
+    assert isinstance(data, list) and "name" in data[0]
+
+
+def test_blocked_domains_list(client):
+    assert "_embedded" in client.blocked_domains(limit=2)
+
+
+def test_domain_meta(client):
+    assert "domain" in client.domain_meta("centre.io")
+
+
 # ---- Key-gated (402) endpoints ------------------------------------------------
 
 import os  # noqa: E402

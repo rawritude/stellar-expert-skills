@@ -6,8 +6,9 @@ Stellar network: accounts, assets, ledgers, operations, markets, liquidity pools
 Soroban contracts, and the well-known-address directory, on mainnet or testnet.
 
 It ships one skill, `stellar-expert`, backed by a **zero-dependency Python CLI**
-(standard library only — no `pip install`). If you have Python 3.9+ on your PATH,
-it just works.
+(standard library only — no `pip install`) covering **50+ endpoints** across accounts,
+assets, ledgers, transactions, trades, price candles, markets, liquidity pools, offers,
+Soroban contracts, and the directory. If you have Python 3.9+ on your PATH, it just works.
 
 ## Install
 
