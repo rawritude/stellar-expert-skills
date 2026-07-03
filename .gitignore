@@ -1,0 +1,23 @@
+# Secrets — never commit real keys
+.env
+.env.local
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Scratch / output
+output/
+*.log

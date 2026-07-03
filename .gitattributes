@@ -1,0 +1,9 @@
+# Normalize line endings to LF for all text files across platforms.
+* text=auto eol=lf
+
+# Explicitly treat these as text (LF).
+*.py    text eol=lf
+*.md    text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.ini   text eol=lf

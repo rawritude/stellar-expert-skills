@@ -1,0 +1,21 @@
+{
+  "name": "stellar-expert-skills",
+  "owner": {
+    "name": "rawritude"
+  },
+  "description": "Claude skills for exploring the Stellar network via the stellar.expert Explorer API.",
+  "plugins": [
+    {
+      "name": "stellar-expert",
+      "source": "./",
+      "description": "Query the stellar.expert Explorer API from Claude — accounts, assets, ledgers, operations, markets, liquidity pools, Soroban contracts, and directory lookups on Stellar mainnet/testnet.",
+      "version": "1.0.0",
+      "author": {
+        "name": "rawritude"
+      },
+      "homepage": "https://github.com/rawritude/stellar-expert-skills",
+      "license": "MIT",
+      "keywords": ["stellar", "blockchain", "stellar-expert", "explorer"]
+    }
+  ]
+}

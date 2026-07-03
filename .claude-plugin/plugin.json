@@ -1,0 +1,13 @@
+{
+  "name": "stellar-expert",
+  "version": "1.0.0",
+  "description": "Query the stellar.expert Explorer API from Claude — accounts, assets, ledgers, operations, markets, liquidity pools, Soroban contracts, and directory lookups on Stellar mainnet/testnet.",
+  "author": {
+    "name": "rawritude",
+    "url": "https://github.com/rawritude"
+  },
+  "homepage": "https://github.com/rawritude/stellar-expert-skills",
+  "repository": "https://github.com/rawritude/stellar-expert-skills",
+  "license": "MIT",
+  "keywords": ["stellar", "blockchain", "stellar-expert", "explorer", "soroban", "xlm"]
+}
