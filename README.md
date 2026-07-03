@@ -28,11 +28,18 @@ That's it. Ask Claude things like:
 
 Claude invokes the skill automatically when your question is about on-chain Stellar data.
 
-## API key (optional)
+## API key (optional, but unlocks more)
 
-The stellar.expert Explorer API is **read-only and public** — the skill works with **no
-key**. A key only raises your rate limit. If you have one (from your stellar.expert
-account dashboard), export it and the skill picks it up automatically:
+Most of the stellar.expert Explorer API is **read-only and public** — the skill works with
+**no key**. A key does two things:
+
+1. **Raises your rate limit** on the public endpoints.
+2. **Unlocks the key-gated endpoints** that otherwise return `402 Payment Required`:
+   `transactions`, `transaction`, `asset-candles`, and `market-candles`. These need a key
+   from an active stellar.expert API subscription.
+
+If you have one (from your stellar.expert account dashboard), export it and the skill picks
+it up automatically:
 
 ```bash
 export STELLAR_EXPERT_API_KEY=your_key_here
@@ -49,6 +56,10 @@ python skills/stellar-expert/scripts/stellar_expert.py network-stats
 python skills/stellar-expert/scripts/stellar_expert.py account GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN
 python skills/stellar-expert/scripts/stellar_expert.py assets --sort trustlines --limit 10
 python skills/stellar-expert/scripts/stellar_expert.py --help
+
+# key-gated (needs STELLAR_EXPERT_API_KEY):
+python skills/stellar-expert/scripts/stellar_expert.py transactions --limit 5
+python skills/stellar-expert/scripts/stellar_expert.py asset-candles XLM --resolution 86400 --from 1780000000 --to 1783000000
 ```
 
 Every command prints JSON to stdout and supports `--network testnet`.

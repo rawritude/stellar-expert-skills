@@ -8,8 +8,8 @@
     {
       "name": "stellar-expert",
       "source": "./",
-      "description": "Query the stellar.expert Explorer API from Claude — accounts, assets, ledgers, operations, markets, liquidity pools, Soroban contracts, and directory lookups on Stellar mainnet/testnet.",
-      "version": "1.0.0",
+      "description": "Query the stellar.expert Explorer API from Claude — accounts, assets, ledgers, transactions, trades, price candles, markets, liquidity pools, Soroban contracts, and directory lookups on Stellar mainnet/testnet.",
+      "version": "1.1.0",
       "author": {
         "name": "rawritude"
       },

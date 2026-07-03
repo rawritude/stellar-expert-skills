@@ -95,6 +95,13 @@ class StellarExpertClient:
                     "STELLAR_EXPERT_API_KEY to raise the limit.",
                     status=429,
                 ) from exc
+            if exc.code == 402:
+                raise ApiError(
+                    "This endpoint requires an API key (HTTP 402 Payment Required). "
+                    "Set STELLAR_EXPERT_API_KEY (from an active stellar.expert API "
+                    "subscription) to access transactions and candles data.",
+                    status=402,
+                ) from exc
             if exc.code == 404:
                 raise ApiError(f"Not found (HTTP 404): {url}", status=404) from exc
             body = ""
@@ -203,6 +210,47 @@ class StellarExpertClient:
             return self.get(f"directory/{urllib.parse.quote(address, safe='')}")
         return self.get("directory", {"limit": limit, "cursor": cursor})
 
+    # ---- Trades (public history) --------------------------------------------
+
+    def asset_trades(self, asset: str, limit: int = 20, cursor: str | None = None) -> object:
+        """Trade history for an asset."""
+        return self.get(f"asset/{urllib.parse.quote(asset, safe='')}/history/trades",
+                        {"limit": limit, "cursor": cursor})
+
+    def account_trades(self, account: str, limit: int = 20, cursor: str | None = None) -> object:
+        """Trade history for an account."""
+        return self.get(f"account/{urllib.parse.quote(account, safe='')}/history/trades",
+                        {"limit": limit, "cursor": cursor})
+
+    # ---- Transactions & candles (REQUIRE an API key — 402 without one) ------
+
+    def transactions(self, sort: str = "id", order: str = "desc", limit: int = 20,
+                     cursor: str | None = None) -> object:
+        """Network-wide transaction list. Requires an API key (HTTP 402 without)."""
+        return self.get("tx", {"sort": sort, "order": order, "limit": limit, "cursor": cursor})
+
+    def transaction(self, tx_id: str) -> object:
+        """A single transaction by hash or id. Requires an API key."""
+        return self.get(f"tx/{urllib.parse.quote(tx_id, safe='')}")
+
+    def asset_candles(self, asset: str, resolution: int = 86400,
+                      frm: int | None = None, to: int | None = None) -> object:
+        """OHLCV price candles for an asset. Requires an API key (HTTP 402 without).
+
+        ``resolution`` is the candle width in seconds; ``frm``/``to`` are unix seconds.
+        Returns a bare array of [ts, open, high, low, close, baseVol, counterVol, trades].
+        """
+        return self.get(f"asset/{urllib.parse.quote(asset, safe='')}/candles",
+                        {"resolution": resolution, "from": frm, "to": to})
+
+    def market_candles(self, selling: str, buying: str, resolution: int = 86400,
+                       frm: int | None = None, to: int | None = None) -> object:
+        """OHLCV candles for a market (selling/buying pair). Requires an API key."""
+        sell = urllib.parse.quote(selling, safe="")
+        buy = urllib.parse.quote(buying, safe="")
+        return self.get(f"market/{sell}/{buy}/candles",
+                        {"resolution": resolution, "from": frm, "to": to})
+
 
 # ---- CLI --------------------------------------------------------------------
 
@@ -278,6 +326,44 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--limit", type=int, default=20)
     sp.add_argument("--cursor")
 
+    sp = sub.add_parser("asset-trades", help="Trade history for an asset.")
+    sp.add_argument("asset")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.add_argument("--cursor")
+
+    sp = sub.add_parser("account-trades", help="Trade history for an account.")
+    sp.add_argument("address")
+    sp.add_argument("--limit", type=int, default=20)
+    sp.add_argument("--cursor")
+
+    sp = sub.add_parser("transactions",
+                        help="Network transaction list. [requires API key]")
+    sp.add_argument("--sort", default="id")
+    sp.add_argument("--order", default="desc", choices=["asc", "desc"])
+    sp.add_argument("--limit", type=int, default=20)
+    sp.add_argument("--cursor")
+
+    sp = sub.add_parser("transaction",
+                        help="A single transaction by hash. [requires API key]")
+    sp.add_argument("tx_id", metavar="HASH")
+
+    sp = sub.add_parser("asset-candles",
+                        help="OHLCV price candles for an asset. [requires API key]")
+    sp.add_argument("asset")
+    sp.add_argument("--resolution", type=int, default=86400,
+                    help="Candle width in seconds (default 86400 = daily).")
+    sp.add_argument("--from", dest="frm", type=int, help="Start unix timestamp (seconds).")
+    sp.add_argument("--to", type=int, help="End unix timestamp (seconds).")
+
+    sp = sub.add_parser("market-candles",
+                        help="OHLCV candles for a selling/buying market. [requires API key]")
+    sp.add_argument("selling")
+    sp.add_argument("buying")
+    sp.add_argument("--resolution", type=int, default=86400,
+                    help="Candle width in seconds (default 86400 = daily).")
+    sp.add_argument("--from", dest="frm", type=int, help="Start unix timestamp (seconds).")
+    sp.add_argument("--to", type=int, help="End unix timestamp (seconds).")
+
     return p
 
 
@@ -315,6 +401,21 @@ def dispatch(args: argparse.Namespace, client: StellarExpertClient) -> object:
                 else client.contract(args.contract_id))
     if cmd == "directory":
         return client.directory(address=args.address, limit=args.limit, cursor=args.cursor)
+    if cmd == "asset-trades":
+        return client.asset_trades(args.asset, limit=args.limit, cursor=args.cursor)
+    if cmd == "account-trades":
+        return client.account_trades(args.address, limit=args.limit, cursor=args.cursor)
+    if cmd == "transactions":
+        return client.transactions(sort=args.sort, order=args.order,
+                                   limit=args.limit, cursor=args.cursor)
+    if cmd == "transaction":
+        return client.transaction(args.tx_id)
+    if cmd == "asset-candles":
+        return client.asset_candles(args.asset, resolution=args.resolution,
+                                   frm=args.frm, to=args.to)
+    if cmd == "market-candles":
+        return client.market_candles(args.selling, args.buying, resolution=args.resolution,
+                                    frm=args.frm, to=args.to)
     raise ApiError(f"Unknown command: {cmd}")
 
 

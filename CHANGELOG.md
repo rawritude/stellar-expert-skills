@@ -4,6 +4,20 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-07-02
+
+### Added
+- Key-gated (paid) endpoints, unlocked by `STELLAR_EXPERT_API_KEY`: `transactions`,
+  `transaction` (by hash), `asset-candles`, and `market-candles` (OHLCV). These return
+  HTTP 402 without a valid subscription key; the client now surfaces a clear 402 message.
+- Public trade-history commands: `asset-trades` and `account-trades`.
+- Live tests covering the paid endpoints (with key) and the 402-without-key path.
+
+### Fixed
+- Corrected docs: trade history *is* available via stellar.expert; only payment/operation
+  history is not. The API key has a real effect (raises rate limits **and** unlocks the
+  402 endpoints), not merely rate limits.
+
 ## [1.0.0] - 2026-07-02
 
 ### Added

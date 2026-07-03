@@ -46,6 +46,15 @@ def test_build_url_list_uses_repeated_plain_param():
     assert "asset%5B%5D" not in url and "asset[]" not in url
 
 
+def test_candles_maps_frm_to_from_param(monkeypatch):
+    captured = {}
+    c = se.StellarExpertClient(network="public")
+    monkeypatch.setattr(c, "get", lambda path, query=None: captured.update(path=path, query=query))
+    c.asset_candles("USDC-GABC", resolution=3600, frm=100, to=200)
+    assert captured["path"].endswith("/candles")
+    assert captured["query"] == {"resolution": 3600, "from": 100, "to": 200}
+
+
 def test_build_url_bool_serialized_lowercase():
     c = se.StellarExpertClient(network="public")
     url = c.build_url("x", {"flag": True, "off": False})
@@ -115,6 +124,16 @@ def test_get_raises_apierror_on_429(monkeypatch):
         c.get("ledger/last")
     assert exc.value.status == 429
     assert "rate limit" in str(exc.value).lower()
+
+
+def test_get_raises_apierror_on_402(monkeypatch):
+    c = se.StellarExpertClient()
+    monkeypatch.setattr(se.urllib.request, "urlopen",
+                        lambda req, timeout=None: (_ for _ in ()).throw(_http_error(402)))
+    with pytest.raises(se.ApiError) as exc:
+        c.get("tx")
+    assert exc.value.status == 402
+    assert "api key" in str(exc.value).lower()
 
 
 def test_get_raises_apierror_on_404(monkeypatch):
@@ -209,6 +228,12 @@ class _SpyClient:
     (["contract", "CABC"], "contract"),
     (["contract", "CABC", "--invocations"], "contract_invocations"),
     (["directory"], "directory"),
+    (["asset-trades", "USDC-GABC"], "asset_trades"),
+    (["account-trades", "GABC"], "account_trades"),
+    (["transactions"], "transactions"),
+    (["transaction", "deadbeef"], "transaction"),
+    (["asset-candles", "USDC-GABC"], "asset_candles"),
+    (["market-candles", "XLM", "USDC-GABC"], "market_candles"),
 ])
 def test_dispatch_routing(argv, expected_method):
     args = se.build_parser().parse_args(argv)

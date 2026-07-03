@@ -103,6 +103,65 @@ def test_directory_single_lookup(client):
     assert "tags" in data
 
 
+def test_asset_trades_public(client):
+    data = client.asset_trades(USDC, limit=2)
+    assert "_embedded" in data
+
+
+def test_account_trades_public(client):
+    data = client.account_trades(CENTRE_ACCT, limit=1)
+    assert "_embedded" in data
+
+
+# ---- Key-gated (402) endpoints ------------------------------------------------
+
+import os  # noqa: E402
+
+HAS_KEY = bool(os.environ.get("STELLAR_EXPERT_API_KEY"))
+requires_key = pytest.mark.skipif(not HAS_KEY,
+                                  reason="STELLAR_EXPERT_API_KEY not set — paid endpoint")
+
+
+def test_paid_endpoint_402_without_key():
+    """A keyless client must get HTTP 402 on a paid endpoint."""
+    keyless = se.StellarExpertClient(network="public", api_key="")
+    try:
+        keyless.transactions(limit=1)
+    except se.ApiError as exc:
+        assert exc.status == 402
+    else:
+        pytest.fail("expected HTTP 402 without an API key")
+
+
+@requires_key
+def test_transactions_with_key(client):
+    data = client.transactions(limit=2)
+    records = data["_embedded"]["records"]
+    assert records and "hash" in records[0]
+
+
+@requires_key
+def test_transaction_by_hash_with_key(client):
+    tx_hash = client.transactions(limit=1)["_embedded"]["records"][0]["hash"]
+    data = client.transaction(tx_hash)
+    assert data["hash"] == tx_hash
+
+
+@requires_key
+def test_asset_candles_with_key(client):
+    data = client.asset_candles(USDC, resolution=86400,
+                                frm=1780000000, to=1783000000)
+    assert isinstance(data, list) and data
+    assert len(data[0]) >= 5  # [ts, open, high, low, close, ...]
+
+
+@requires_key
+def test_market_candles_with_key(client):
+    data = client.market_candles("XLM", USDC, resolution=86400,
+                                 frm=1780000000, to=1783000000)
+    assert isinstance(data, list) and data
+
+
 def test_testnet_segment():
     c = se.StellarExpertClient(network="testnet")
     try:
