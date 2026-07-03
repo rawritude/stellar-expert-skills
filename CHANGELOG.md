@@ -4,6 +4,17 @@ All notable changes to this project are documented here. This project adheres to
 [Semantic Versioning](https://semver.org/) and
 [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0] - 2026-07-03
+
+### Added
+- `wasm <hash> [--output FILE]` — download a contract's compiled WASM bytecode. Handles
+  the binary response, prints `{bytes, sha256}`, and optionally saves to a file. Verified
+  against the live API: the returned hash equals the sha256 of the downloaded bytes.
+- `stream-ledgers [--count N] [--cursor S]` — long-poll the `/ledger/stream` endpoint,
+  chaining the cursor to collect the next N ledgers as they close.
+- Internal: split the fetch layer into JSON (`_fetch`) and binary (`_fetch_bytes`) paths.
+- Tests grew to 137 (89 offline + 48 live), including WASM integrity and stream tests.
+
 ## [1.2.0] - 2026-07-02
 
 ### Added

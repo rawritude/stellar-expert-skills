@@ -102,6 +102,8 @@ The client raises a clear error (status 402) on these when no key is set.
 | `directory-tags` | `GET /explorer/directory/tags` | **Global** (no network segment). Bare array of `{name, description}`. |
 | `blocked-domains [<domain>]` | `GET /explorer/directory/blocked-domains[/{domain}]` | **Global.** List (HAL) or single `{domain, blocked}`. |
 | `domain-meta <domain>` | `GET /domain-meta?domain=` | Flat `{domain, meta{...}}` from the domain's stellar.toml. |
+| `wasm <hash> [--output F]` | `GET /wasm/{hash}` | **Binary** response (WASM bytecode). CLI prints `{wasm, bytes, sha256, saved?}`; `--output` writes the bytes. The hash IS the sha256 of the bytecode. Get a hash from `contract-versions` (`wasm` field). |
+| `stream-ledgers [--count N] [--cursor S]` | `GET /ledger/stream?cursor=` | **Long-poll.** Each request blocks until the next ledger closes, returning `{"ledger": <seq>}`. The CLI chains the cursor and collects `N` ledgers (default 3) into an array. |
 
 Pool ids: the 64-char hex form works in paths; the object's own `id` field is the strkey (`L...`) form.
 

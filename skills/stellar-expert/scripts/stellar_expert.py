@@ -17,6 +17,7 @@ Docs: https://stellar.expert/api-docs/
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -94,16 +95,18 @@ class StellarExpertClient:
         """GET a global endpoint without the network segment (/explorer/{path})."""
         return self._fetch(self.build_root_url(path, query))
 
-    def _fetch(self, url: str) -> object:
-        """Perform a GET against a fully-built URL and return parsed JSON, or raise."""
+    def _open(self, url: str, accept: str = "application/json",
+              timeout: float | None = None) -> bytes:
+        """Perform a GET against a fully-built URL and return the raw body bytes,
+        translating HTTP/transport failures into ApiError."""
         req = urllib.request.Request(url, method="GET")
-        req.add_header("Accept", "application/json")
+        req.add_header("Accept", accept)
         req.add_header("User-Agent", USER_AGENT)
         if self.api_key:
             req.add_header("Authorization", f"Bearer {self.api_key}")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read()
+            with urllib.request.urlopen(req, timeout=timeout or self.timeout) as resp:
+                return resp.read()
         except urllib.error.HTTPError as exc:
             if exc.code == 429:
                 raise ApiError(
@@ -132,12 +135,20 @@ class StellarExpertClient:
             ) from exc
         except urllib.error.URLError as exc:
             raise ApiError(f"Network error contacting stellar.expert: {exc.reason}") from exc
+
+    def _fetch(self, url: str, timeout: float | None = None) -> object:
+        """GET a URL and return parsed JSON (or None for an empty body)."""
+        raw = self._open(url, timeout=timeout)
         if not raw:
             return None
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
             raise ApiError(f"stellar.expert returned non-JSON response: {exc}") from exc
+
+    def _fetch_bytes(self, url: str) -> bytes:
+        """GET a URL and return the raw body bytes (for binary responses)."""
+        return self._open(url, accept="application/octet-stream")
 
     # ---- Network -------------------------------------------------------------
 
@@ -435,6 +446,34 @@ class StellarExpertClient:
         """stellar.toml-derived metadata for a domain."""
         return self.get("domain-meta", {"domain": domain})
 
+    # ---- Binary + streaming --------------------------------------------------
+
+    def wasm(self, wasm_hash: str) -> bytes:
+        """Download a contract's compiled WASM bytecode (raw bytes) by hash."""
+        return self._fetch_bytes(self.build_url(f"wasm/{_seg(wasm_hash)}"))
+
+    def stream_ledger(self, cursor: int, timeout: float | None = None) -> object:
+        """Long-poll for the next ledger after ``cursor``. Blocks until it closes."""
+        return self._fetch(self.build_url("ledger/stream", {"cursor": int(cursor)}),
+                           timeout=timeout)
+
+    def stream_ledgers(self, count: int = 3, cursor: int | None = None):
+        """Yield the next ``count`` ledgers as they close (long-poll stream).
+
+        Starts after ``cursor`` (defaults to the latest ledger). Each item is
+        whatever the stream returns (e.g. ``{"ledger": <sequence>}``).
+        """
+        if cursor is None:
+            last = self.last_ledger()
+            cursor = last["sequence"] if isinstance(last, dict) else int(last)
+        for _ in range(count):
+            item = self.stream_ledger(cursor, timeout=90.0)
+            yield item
+            seq = item.get("ledger") if isinstance(item, dict) else None
+            if seq is None:
+                break
+            cursor = seq
+
 
 # ---- CLI --------------------------------------------------------------------
 
@@ -688,6 +727,18 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("domain-meta", help="stellar.toml metadata for a domain.")
     sp.add_argument("domain")
 
+    # ---- extended: binary + streaming ----------------------------------------
+    sp = sub.add_parser("wasm",
+                        help="Download a contract's WASM bytecode by hash.")
+    sp.add_argument("wasm_hash", metavar="HASH")
+    sp.add_argument("--output", "-o", metavar="FILE",
+                    help="Write the WASM bytes to this file (else just print a summary).")
+
+    sp = sub.add_parser("stream-ledgers",
+                        help="Long-poll the next N ledgers as they close.")
+    sp.add_argument("--count", type=int, default=3, help="How many ledgers to wait for.")
+    sp.add_argument("--cursor", type=int, help="Start after this ledger (default: latest).")
+
     return p
 
 
@@ -817,6 +868,22 @@ def dispatch(args: argparse.Namespace, client: StellarExpertClient) -> object:
         return client.blocked_domains(domain=args.domain, limit=args.limit, cursor=args.cursor)
     if cmd == "domain-meta":
         return client.domain_meta(args.domain)
+    if cmd == "wasm":
+        data = client.wasm(args.wasm_hash)
+        summary = {
+            "wasm": args.wasm_hash,
+            "bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        }
+        if args.output:
+            with open(args.output, "wb") as fh:
+                fh.write(data)
+            summary["saved"] = args.output
+        else:
+            summary["note"] = "pass --output FILE to save the binary WASM"
+        return summary
+    if cmd == "stream-ledgers":
+        return list(client.stream_ledgers(count=args.count, cursor=args.cursor))
     raise ApiError(f"Unknown command: {cmd}")
 
 

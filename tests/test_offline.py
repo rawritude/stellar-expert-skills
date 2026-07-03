@@ -310,6 +310,74 @@ def test_main_prints_json_and_returns_zero(monkeypatch, capsys):
     assert json.loads(out) == {"payments": 123}
 
 
+def test_wasm_client_uses_binary_fetch(monkeypatch):
+    captured = {}
+    c = se.StellarExpertClient(network="public")
+
+    def fake_fetch_bytes(url):
+        captured["url"] = url
+        return b"\x00asm"
+
+    monkeypatch.setattr(c, "_fetch_bytes", fake_fetch_bytes)
+    out = c.wasm("abc123")
+    assert out == b"\x00asm"
+    assert captured["url"].endswith("/explorer/public/wasm/abc123")
+
+
+def test_fetch_bytes_requests_octet_stream(monkeypatch):
+    captured = {}
+    c = se.StellarExpertClient(network="public")
+    monkeypatch.setattr(c, "_open",
+                        lambda url, accept="application/json", timeout=None:
+                        captured.update(accept=accept) or b"\x00asm\x01\x02")
+    assert c._fetch_bytes("http://x/wasm/h") == b"\x00asm\x01\x02"
+    assert captured["accept"] == "application/octet-stream"
+
+
+def test_wasm_command_summary_and_file(monkeypatch, capsys, tmp_path):
+    payload = b"\x00asm\x01\x02\x03"
+    monkeypatch.setattr(se.StellarExpertClient, "wasm", lambda self, h: payload)
+    out_file = tmp_path / "c.wasm"
+    rc = se.main(["wasm", "DEADBEEF", "--output", str(out_file)])
+    assert rc == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["bytes"] == len(payload)
+    assert summary["sha256"] == __import__("hashlib").sha256(payload).hexdigest()
+    assert summary["saved"] == str(out_file)
+    assert out_file.read_bytes() == payload
+
+
+def test_wasm_command_without_output_prints_note(monkeypatch, capsys):
+    monkeypatch.setattr(se.StellarExpertClient, "wasm", lambda self, h: b"\x00asm")
+    se.main(["wasm", "DEADBEEF"])
+    summary = json.loads(capsys.readouterr().out)
+    assert "note" in summary and "saved" not in summary
+
+
+def test_stream_ledgers_collects_generator(monkeypatch, capsys):
+    monkeypatch.setattr(se.StellarExpertClient, "stream_ledgers",
+                        lambda self, count, cursor: iter([{"ledger": 1}, {"ledger": 2}]))
+    rc = se.main(["stream-ledgers", "--count", "2"])
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out) == [{"ledger": 1}, {"ledger": 2}]
+
+
+def test_stream_ledgers_follows_cursor(monkeypatch):
+    """stream_ledgers should chain cursor from each returned ledger seq."""
+    seen = []
+    c = se.StellarExpertClient(network="public")
+    monkeypatch.setattr(c, "last_ledger", lambda: {"sequence": 100})
+
+    def fake_stream(cursor, timeout=None):
+        seen.append(cursor)
+        return {"ledger": cursor + 1}
+
+    monkeypatch.setattr(c, "stream_ledger", fake_stream)
+    out = list(c.stream_ledgers(count=3))
+    assert seen == [100, 101, 102]
+    assert out == [{"ledger": 101}, {"ledger": 102}, {"ledger": 103}]
+
+
 def test_main_error_goes_to_stderr_with_nonzero_exit(monkeypatch, capsys):
     def boom(self, address):
         raise se.ApiError("bad address", status=400)

@@ -244,6 +244,36 @@ def test_domain_meta(client):
     assert "domain" in client.domain_meta("centre.io")
 
 
+# ---- Binary (WASM) + streaming (v1.3.0) --------------------------------------
+
+def _find_wasm_hash(client):
+    """Discover a real WASM hash from a recent non-SAC contract's version record."""
+    for rec in client.contracts(limit=3)["_embedded"]["records"]:
+        if rec.get("asset"):
+            continue  # SAC — no user WASM
+        versions = client.contract_versions(rec["contract"], limit=1)["_embedded"]["records"]
+        if versions and versions[0].get("wasm"):
+            return versions[0]["wasm"]
+    return None
+
+
+def test_wasm_download_integrity(client):
+    import hashlib
+    wasm_hash = _find_wasm_hash(client)
+    if not wasm_hash:
+        pytest.skip("no WASM-based contract found to test against")
+    data = client.wasm(wasm_hash)
+    assert data[:4] == b"\x00asm"  # WASM magic bytes
+    # stellar.expert WASM hash IS the sha256 of the bytecode
+    assert hashlib.sha256(data).hexdigest() == wasm_hash
+
+
+def test_stream_ledgers_live(client):
+    ledgers = list(client.stream_ledgers(count=1))
+    assert len(ledgers) == 1
+    assert "ledger" in ledgers[0] and isinstance(ledgers[0]["ledger"], int)
+
+
 # ---- Key-gated (402) endpoints ------------------------------------------------
 
 import os  # noqa: E402

@@ -77,6 +77,10 @@ shapes. Group by what the user is asking about:
   `pool-history <id>`, `market <selling> <buying>`, `markets --asset <A>`,
   `active-market <A-with--1/-2-suffix>`, `offer <id>`, `offer-trades <id>`.
 - **Directory / domain:** `directory-tags`, `blocked-domains [<domain>]`, `domain-meta <domain>`.
+- **Binary / streaming:** `wasm <hash> [--output FILE]` downloads a contract's WASM bytecode
+  (prints `{bytes, sha256}`; the hash is the sha256 — get one from `contract-versions`).
+  `stream-ledgers [--count N]` long-polls the next N ledgers as they close (~5s each), so
+  keep N small and warn the user it blocks.
 
 Watch-outs: `asset-supply` returns a bare number; `account-balance-history` / `asset-position`
 need an asset the account actually holds (else 404); `active-market` needs the asset type
